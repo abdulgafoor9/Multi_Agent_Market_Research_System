@@ -1,16 +1,11 @@
 import requests
 from bs4 import BeautifulSoup
-import re
-import uuid
-import markdown
-import streamlit as st
 from urllib.parse import quote
 from datasets import load_dataset
 
-# Load the Devanagari-Ecommerce-Dataset
+# Load dataset
 ds = load_dataset("kshitizgajurel/Devanagari-Ecommerce-Dataset")
 
-# Industry Research Agent
 class IndustryResearchAgent:
     def __init__(self):
         self.headers = {
@@ -44,7 +39,6 @@ class IndustryResearchAgent:
         found = [kw for kw in keywords if kw.lower() in text.lower()]
         return found if found else ["operations", "customer experience"]
 
-# Use Case Generation Agent
 class UseCaseGenerationAgent:
     def __init__(self):
         self.use_case_templates = {
@@ -75,14 +69,8 @@ class UseCaseGenerationAgent:
         filtered = [uc for uc in use_cases if any(fa.lower() in uc["description"].lower() for fa in focus_areas)]
         return filtered if filtered else use_cases[:2]
 
-# Resource Collection Agent
 class ResourceCollectionAgent:
     def __init__(self):
-        self.platforms = {
-            "Kaggle": "https://www.kaggle.com/search?q={query}+in:datasets",
-            "HuggingFace": "https://huggingface.co/datasets?search={query}",
-            "GitHub": "https://github.com/search?q={query}+retail+dataset"
-        }
         self.predefined_datasets = {
             "Retail": [
                 {
@@ -126,15 +114,16 @@ class ResourceCollectionAgent:
             f.write(content)
         return filename
 
-# Main Workflow
 def main(company="RetailCo", industry="Retail"):
     research_agent = IndustryResearchAgent()
     use_case_agent = UseCaseGenerationAgent()
     resource_agent = ResourceCollectionAgent()
+
     research_data = research_agent.research_company(company, industry)
     focus_areas = research_data["focus_areas"]
     use_cases = use_case_agent.generate_use_cases(industry, focus_areas)
     resource_file = resource_agent.save_resources(use_cases)
+
     report = f"# AI Use Case Proposal for {company}\n\n"
     report += "## Industry and Company Overview\n"
     report += f"- **Industry**: {industry}\n"
@@ -154,32 +143,9 @@ def main(company="RetailCo", industry="Retail"):
             report += f"  - [{platform}]({link})\n"
     return report, resource_file
 
-# Streamlit App (Modified to auto-generate proposal on load)
-def streamlit_app():
-    st.title("AI Use Case Generator")
-    # Automatically generate proposal for RetailCo in Retail industry on app load
-    try:
-        report, resource_file = main(company="RetailCo", industry="Retail")
-        st.markdown(report)
-        with open(resource_file, "r") as f:
-            st.download_button("Download Resources", f.read(), file_name=resource_file)
-        st.write("### Architecture Flowchart")
-        st.write("""
-        1. Input → Industry Research Agent (Web Scraping)
-        2. Research Agent → Use Case Generation Agent (Trend Analysis)
-        3. Use Case Agent → Resource Collection Agent (Dataset Search)
-        4. Output → Report and Resource Links
-        """)
-    except Exception as e:
-        st.error(f"Error generating proposal: {str(e)}")
-
 if __name__ == "__main__":
-    import sys
-    if len(sys.argv) > 1 and sys.argv[1] == "streamlit":
-        streamlit_app()
-    else:
-        report, resource_file = main()
-        with open("proposal.md", "w") as f:
-            f.write(report)
-        print("Proposal generated: proposal.md")
-        print(f"Resources saved: {resource_file}")
+    report, resource_file = main()
+    with open("proposal.md", "w") as f:
+        f.write(report)
+    print("Proposal generated: proposal.md")
+    print(f"Resources saved: {resource_file}")
