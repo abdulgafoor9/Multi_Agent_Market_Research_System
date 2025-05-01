@@ -1,151 +1,190 @@
+import requests
+from bs4 import BeautifulSoup
+import re
+import uuid
+import markdown
 import streamlit as st
-import pandas as pd
-import math
-from pathlib import Path
+from urllib.parse import quote
+from datasets import load_dataset
 
-# Set the title and favicon that appear in the Browser's tab bar.
-st.set_page_config(
-    page_title='GDP dashboard',
-    page_icon=':earth_americas:', # This is an emoji shortcode. Could be a URL too.
-)
+# Load the Devanagari-Ecommerce-Dataset
+ds = load_dataset("kshitizgajurel/Devanagari-Ecommerce-Dataset")
 
-# -----------------------------------------------------------------------------
-# Declare some useful functions.
+# Industry Research Agent (Unchanged)
+class IndustryResearchAgent:
+    def __init__(self):
+        self.headers = {
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+        }
 
-@st.cache_data
-def get_gdp_data():
-    """Grab GDP data from a CSV file.
+    def search_web(self, query):
+        encoded_query = quote(query)
+        url = f"https://www.google.com/search?q={encoded_query}"
+        try:
+            response = requests.get(url, headers=self.headers)
+            soup = BeautifulSoup(response.text, "html.parser")
+            snippets = [div.text for div in soup.find_all("div", class_="BNeawe s3v9rd AP7Wnd")]
+            return " ".join(snippets[:3])
+        except Exception as e:
+            return f"Error searching web: {str(e)}"
 
-    This uses caching to avoid having to read the file every time. If we were
-    reading from an HTTP endpoint instead of a file, it's a good idea to set
-    a maximum age to the cache with the TTL argument: @st.cache_data(ttl='1d')
-    """
+    def research_company(self, company, industry):
+        company_query = f"{company} {industry} company overview strategic focus"
+        industry_query = f"{industry} industry trends AI ML 2025"
+        company_info = self.search_web(company_query)
+        industry_info = self.search_web(industry_query)
+        return {
+            "company_info": company_info,
+            "industry_info": industry_info,
+            "focus_areas": self.extract_focus_areas(company_info)
+        }
 
-    # Instead of a CSV on disk, you could read from an HTTP endpoint here too.
-    DATA_FILENAME = Path(__file__).parent/'data/gdp_data.csv'
-    raw_gdp_df = pd.read_csv(DATA_FILENAME)
+    def extract_focus_areas(self, text):
+        keywords = ["customer experience", "supply chain", "operations", "marketing", "sales"]
+        found = [kw for kw in keywords if kw.lower() in text.lower()]
+        return found if found else ["operations", "customer experience"]
 
-    MIN_YEAR = 1960
-    MAX_YEAR = 2022
+# Use Case Generation Agent (Unchanged)
+class UseCaseGenerationAgent:
+    def __init__(self):
+        self.use_case_templates = {
+            "Retail": [
+                {
+                    "name": "Personalized Product Recommendations",
+                    "description": "Use ML to analyze customer purchase history and preferences to recommend products, increasing sales and customer satisfaction.",
+                    "technologies": ["Recommendation Systems", "ML", "Customer Segmentation"],
+                    "reference": "McKinsey: AI in Retail Personalization"
+                },
+                {
+                    "name": "Inventory Optimization",
+                    "description": "Leverage AI to predict demand and optimize stock levels, reducing overstock and stockouts.",
+                    "technologies": ["Time Series Forecasting", "ML", "GenAI for reporting"],
+                    "reference": "Deloitte: AI in Retail Supply Chain"
+                },
+                {
+                    "name": "AI-Powered Customer Support Chatbot",
+                    "description": "Implement a GenAI-based chatbot for 24/7 customer support, handling inquiries and returns.",
+                    "technologies": ["LLMs", "GenAI", "NLP"],
+                    "reference": "Nexocode: AI Chatbots in Retail"
+                }
+            ]
+        }
 
-    # The data above has columns like:
-    # - Country Name
-    # - Country Code
-    # - [Stuff I don't care about]
-    # - GDP for 1960
-    # - GDP for 1961
-    # - GDP for 1962
-    # - ...
-    # - GDP for 2022
-    #
-    # ...but I want this instead:
-    # - Country Name
-    # - Country Code
-    # - Year
-    # - GDP
-    #
-    # So let's pivot all those year-columns into two: Year and GDP
-    gdp_df = raw_gdp_df.melt(
-        ['Country Code'],
-        [str(x) for x in range(MIN_YEAR, MAX_YEAR + 1)],
-        'Year',
-        'GDP',
-    )
+    def generate_use_cases(self, industry, focus_areas):
+        use_cases = self.use_case_templates.get(industry, [])
+        filtered = [uc for uc in use_cases if any(fa.lower() in uc["description"].lower() for fa in focus_areas)]
+        return filtered if filtered else use_cases[:2]
 
-    # Convert years from string to integers
-    gdp_df['Year'] = pd.to_numeric(gdp_df['Year'])
+# Corrected Resource Collection Agent
+class ResourceCollectionAgent:
+    def __init__(self):
+        self.platforms = {
+            "Kaggle": "https://www.kaggle.com/search?q={query}+in:datasets",
+            "HuggingFace": "https://huggingface.co/datasets?search={query}",
+            "GitHub": "https://github.com/search?q={query}+retail+dataset"
+        }
+        # Predefined retail datasets (exactly 3: Hugging Face, Kaggle, GitHub)
+        self.predefined_datasets = {
+            "Retail": [
+                {
+                    "name": "Devanagari-Ecommerce-Dataset",
+                    "url": "https://huggingface.co/datasets/kshitizgajurel/Devanagari-Ecommerce-Dataset",
+                    "platform": "HuggingFace",
+                    "description": "Ecommerce product data in Devanagari script for regional retail analytics."
+                },
+                {
+                    "name": "Online Retail Data Set",
+                    "url": "https://www.kaggle.com/datasets/vijayuv/onlineretail",
+                    "platform": "Kaggle",
+                    "description": "Transactional data from a UK-based online retailer for market basket analysis."
+                },
+                {
+                    "name": "Spark Retail Dataset",
+                    "url": "https://github.com/databricks/Spark-The-Definitive-Guide/tree/master/data/retail-data",
+                    "platform": "GitHub",
+                    "description": "Retail dataset for big data processing with Apache Spark."
+                }
+            ]
+        }
 
-    return gdp_df
+    def search_datasets(self, use_case, industry="Retail"):
+        resources = {}
+        
+        # Include all predefined datasets for retail use cases
+        predefined_datasets = self.predefined_datasets.get(industry, [])
+        resources["Predefined"] = [f"{ds['name']}: {ds['url']}" for ds in predefined_datasets]
 
-gdp_df = get_gdp_data()
+        # Populate platform-specific resources with predefined datasets
+        for platform in ["Kaggle", "HuggingFace", "GitHub"]:
+            platform_datasets = [ds["url"] for ds in predefined_datasets if ds["platform"] == platform]
+            resources[platform] = platform_datasets if platform_datasets else ["No link found"]
 
-# -----------------------------------------------------------------------------
-# Draw the actual page
+        return resources
 
-# Set the title that appears at the top of the page.
-'''
-# :earth_americas: GDP dashboard
+    def save_resources(self, use_cases, filename="resources.md"):
+        content = "# Resource Assets\n\n"
+        for uc in use_cases:
+            content += f"## {uc['name']}\n"
+            resources = self.search_datasets(uc)
+            for platform, links in resources.items():
+                content += f"- **{platform}**: {', '.join(links) if links else 'No link found'}\n"
+        with open(filename, "w") as f:
+            f.write(content)
+        return filename
 
-Browse GDP data from the [World Bank Open Data](https://data.worldbank.org/) website. As you'll
-notice, the data only goes to 2022 right now, and datapoints for certain years are often missing.
-But it's otherwise a great (and did I mention _free_?) source of data.
-'''
+# Main Workflow (Unchanged)
+def main(company="RetailCo", industry="Retail"):
+    research_agent = IndustryResearchAgent()
+    use_case_agent = UseCaseGenerationAgent()
+    resource_agent = ResourceCollectionAgent()
+    research_data = research_agent.research_company(company, industry)
+    focus_areas = research_data["focus_areas"]
+    use_cases = use_case_agent.generate_use_cases(industry, focus_areas)
+    resource_file = resource_agent.save_resources(use_cases)
+    report = f"# AI Use Case Proposal for {company}\n\n"
+    report += "## Industry and Company Overview\n"
+    report += f"- **Industry**: {industry}\n"
+    report += f"- **Company**: {company}\n"
+    report += f"- **Focus Areas**: {', '.join(focus_areas)}\n"
+    report += f"- **Industry Trends**: {research_data['industry_info'][:200]}...\n\n"
+    report += "## Proposed Use Cases\n"
+    for uc in use_cases:
+        report += f"### {uc['name']}\n"
+        report += f"- **Description**: {uc['description']}\n"
+        report += f"- **Technologies**: {', '.join(uc['technologies'])}\n"
+        report += f"- **Reference**: {uc['reference']}\n"
+        resources = resource_agent.search_datasets(uc)
+        report += "- **Resources**:\n"
+        for platform, links in resources.items():
+            link = links[0] if links else "No link found"
+            report += f"  - [{platform}]({link})\n"
+    return report, resource_file
 
-# Add some spacing
-''
-''
+# Streamlit App (Unchanged)
+def streamlit_app():
+    st.title("AI Use Case Generator")
+    company = st.text_input("Company Name", "RetailCo")
+    industry = st.text_input("Industry", "Retail")
+    if st.button("Generate Proposal"):
+        report, resource_file = main(company, industry)
+        st.markdown(report)
+        with open(resource_file, "r") as f:
+            st.download_button("Download Resources", f.read(), file_name=resource_file)
+        st.write("### Architecture Flowchart")
+        st.write("""
+        1. Input → Industry Research Agent (Web Scraping)
+        2. Research Agent → Use Case Generation Agent (Trend Analysis)
+        3. Use Case Agent → Resource Collection Agent (Dataset Search)
+        4. Output → Report and Resource Links
+        """)
 
-min_value = gdp_df['Year'].min()
-max_value = gdp_df['Year'].max()
-
-from_year, to_year = st.slider(
-    'Which years are you interested in?',
-    min_value=min_value,
-    max_value=max_value,
-    value=[min_value, max_value])
-
-countries = gdp_df['Country Code'].unique()
-
-if not len(countries):
-    st.warning("Select at least one country")
-
-selected_countries = st.multiselect(
-    'Which countries would you like to view?',
-    countries,
-    ['DEU', 'FRA', 'GBR', 'BRA', 'MEX', 'JPN'])
-
-''
-''
-''
-
-# Filter the data
-filtered_gdp_df = gdp_df[
-    (gdp_df['Country Code'].isin(selected_countries))
-    & (gdp_df['Year'] <= to_year)
-    & (from_year <= gdp_df['Year'])
-]
-
-st.header('GDP over time', divider='gray')
-
-''
-
-st.line_chart(
-    filtered_gdp_df,
-    x='Year',
-    y='GDP',
-    color='Country Code',
-)
-
-''
-''
-
-
-first_year = gdp_df[gdp_df['Year'] == from_year]
-last_year = gdp_df[gdp_df['Year'] == to_year]
-
-st.header(f'GDP in {to_year}', divider='gray')
-
-''
-
-cols = st.columns(4)
-
-for i, country in enumerate(selected_countries):
-    col = cols[i % len(cols)]
-
-    with col:
-        first_gdp = first_year[first_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-        last_gdp = last_year[last_year['Country Code'] == country]['GDP'].iat[0] / 1000000000
-
-        if math.isnan(first_gdp):
-            growth = 'n/a'
-            delta_color = 'off'
-        else:
-            growth = f'{last_gdp / first_gdp:,.2f}x'
-            delta_color = 'normal'
-
-        st.metric(
-            label=f'{country} GDP',
-            value=f'{last_gdp:,.0f}B',
-            delta=growth,
-            delta_color=delta_color
-        )
+if __name__ == "__main__":
+    import sys
+    if len(sys.argv) > 1 and sys.argv[1] == "streamlit":
+        streamlit_app()
+    else:
+        report, resource_file = main()
+        with open("proposal.md", "w") as f:
+            f.write(report)
+        print("Proposal generated: proposal.md")
+        print(f"Resources saved: {resource_file}")
