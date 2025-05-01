@@ -10,7 +10,7 @@ from datasets import load_dataset
 # Load the Devanagari-Ecommerce-Dataset
 ds = load_dataset("kshitizgajurel/Devanagari-Ecommerce-Dataset")
 
-# Industry Research Agent (Unchanged)
+# Industry Research Agent
 class IndustryResearchAgent:
     def __init__(self):
         self.headers = {
@@ -44,7 +44,7 @@ class IndustryResearchAgent:
         found = [kw for kw in keywords if kw.lower() in text.lower()]
         return found if found else ["operations", "customer experience"]
 
-# Use Case Generation Agent (Unchanged)
+# Use Case Generation Agent
 class UseCaseGenerationAgent:
     def __init__(self):
         self.use_case_templates = {
@@ -75,7 +75,7 @@ class UseCaseGenerationAgent:
         filtered = [uc for uc in use_cases if any(fa.lower() in uc["description"].lower() for fa in focus_areas)]
         return filtered if filtered else use_cases[:2]
 
-# Corrected Resource Collection Agent
+# Resource Collection Agent
 class ResourceCollectionAgent:
     def __init__(self):
         self.platforms = {
@@ -83,7 +83,6 @@ class ResourceCollectionAgent:
             "HuggingFace": "https://huggingface.co/datasets?search={query}",
             "GitHub": "https://github.com/search?q={query}+retail+dataset"
         }
-        # Predefined retail datasets (exactly 3: Hugging Face, Kaggle, GitHub)
         self.predefined_datasets = {
             "Retail": [
                 {
@@ -109,16 +108,11 @@ class ResourceCollectionAgent:
 
     def search_datasets(self, use_case, industry="Retail"):
         resources = {}
-        
-        # Include all predefined datasets for retail use cases
         predefined_datasets = self.predefined_datasets.get(industry, [])
         resources["Predefined"] = [f"{ds['name']}: {ds['url']}" for ds in predefined_datasets]
-
-        # Populate platform-specific resources with predefined datasets
         for platform in ["Kaggle", "HuggingFace", "GitHub"]:
             platform_datasets = [ds["url"] for ds in predefined_datasets if ds["platform"] == platform]
             resources[platform] = platform_datasets if platform_datasets else ["No link found"]
-
         return resources
 
     def save_resources(self, use_cases, filename="resources.md"):
@@ -132,7 +126,7 @@ class ResourceCollectionAgent:
             f.write(content)
         return filename
 
-# Main Workflow (Unchanged)
+# Main Workflow
 def main(company="RetailCo", industry="Retail"):
     research_agent = IndustryResearchAgent()
     use_case_agent = UseCaseGenerationAgent()
@@ -160,13 +154,12 @@ def main(company="RetailCo", industry="Retail"):
             report += f"  - [{platform}]({link})\n"
     return report, resource_file
 
-# Streamlit App (Unchanged)
+# Streamlit App (Modified to auto-generate proposal on load)
 def streamlit_app():
     st.title("AI Use Case Generator")
-    company = st.text_input("Company Name", "RetailCo")
-    industry = st.text_input("Industry", "Retail")
-    if st.button("Generate Proposal"):
-        report, resource_file = main(company, industry)
+    # Automatically generate proposal for RetailCo in Retail industry on app load
+    try:
+        report, resource_file = main(company="RetailCo", industry="Retail")
         st.markdown(report)
         with open(resource_file, "r") as f:
             st.download_button("Download Resources", f.read(), file_name=resource_file)
@@ -177,6 +170,8 @@ def streamlit_app():
         3. Use Case Agent → Resource Collection Agent (Dataset Search)
         4. Output → Report and Resource Links
         """)
+    except Exception as e:
+        st.error(f"Error generating proposal: {str(e)}")
 
 if __name__ == "__main__":
     import sys
