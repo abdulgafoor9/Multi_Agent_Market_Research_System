@@ -1,19 +1,10 @@
-# :earth_americas: GDP dashboard template
+# 🧠 AI & GenAI Use Case Generator — Multi-Agent System
 
-A simple Streamlit app showing the GDP of different countries in the world.
+## 📌 Overview
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://gdp-dashboard-template.streamlit.app/)
+This project implements a **Multi-Agent Architecture System** designed for **InstaResz Business Services Pvt. Ltd.** to automate the generation of relevant **AI and GenAI use cases** for a given **company or industry**. The system performs end-to-end **market research**, analyzes **strategic focus areas**, and recommends datasets and AI solutions tailored to enhance **operations** and **customer experiences**.
 
-### How to run it on your own machine
+---
 
-1. Install the requirements
+## 🧩 Architecture Flowchart
 
-   ```
-   $ pip install -r requirements.txt
-   ```
-
-2. Run the app
-
-   ```
-   $ streamlit run streamlit_app.py
-   ```
