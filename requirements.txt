@@ -1,2 +1,7 @@
 streamlit
 pandas
+requests==2.31.0
+beautifulsoup4==4.12.3
+markdown==3.5.2
+streamlit==1.39.0
+datasets==3.0.1
