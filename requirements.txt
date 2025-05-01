@@ -1,6 +1,6 @@
 streamlit
 pandas
-requests==2.27.0
+requests
 beautifulsoup4==4.12.3
 markdown==3.5.2
 streamlit==1.39.0
